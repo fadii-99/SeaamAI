@@ -1,11 +1,9 @@
 import os
-from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
-
+from dotenv import load_dotenv
 load_dotenv()
-
 
 class Settings(BaseSettings):
     SECRET_KEY: str = Field(..., env="SECRET_KEY")
@@ -18,6 +16,7 @@ class Settings(BaseSettings):
     MAIL_STARTTLS: bool = Field(..., env="MAIL_STARTTLS")
     MAIL_SSL_TLS: bool = Field(..., env="MAIL_SSL_TLS")
     USE_CREDENTIALS: bool = Field(..., env="USE_CREDENTIALS")
+    OPENAI_API_KEY: str = Field(..., env="OPENAI_API_KEY")
 
 
     class Config:

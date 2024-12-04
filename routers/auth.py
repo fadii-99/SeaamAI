@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import get_db
+from fastapi.responses import JSONResponse
+
 from schemas import UserSignup, UserLogin, forgetPassword, updatePassword
 from bson.objectid import ObjectId
 import bcrypt
@@ -16,7 +18,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 async def signup(user: UserSignup, db=Depends(get_db)):
     existing_user = await db.users.find_one({"email": user.email})
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        return JSONResponse(content={"error": "Email already registered"}, status_code=400)
     
     hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
     user_data = {
@@ -26,17 +28,17 @@ async def signup(user: UserSignup, db=Depends(get_db)):
         "avatar": None
     }
     await db.users.insert_one(user_data)
-    return {"message": "User registered successfully"}
+    return JSONResponse(content={"message": "User registered successfully"}, status_code=200)
 
 
 @router.post("/login")
 async def login(user: UserLogin, db=Depends(get_db)):
     existing_user = await db.users.find_one({"email": user.email})
     if not existing_user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return JSONResponse(content={"error": "Invalid credentials"}, status_code=401)
 
     if not bcrypt.checkpw(user.password.encode('utf-8'), existing_user["password"].encode('utf-8')):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return JSONResponse(content={"error": "Invalid credentials"}, status_code=401)
 
     token = jwt.encode({
         "user_id": str(existing_user["_id"]),
@@ -46,7 +48,7 @@ async def login(user: UserLogin, db=Depends(get_db)):
         "exp": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
     }, settings.SECRET_KEY, algorithm="HS256")
 
-    return {"token": token}
+    return JSONResponse(content={"message": "User Logged in successfully","token": token}, status_code=200)
 
 
 
@@ -66,7 +68,7 @@ conf = ConnectionConfig(
 async def send_otp(data: forgetPassword, db=Depends(get_db)):
     user = await db.users.find_one({"email": data.email})
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        return JSONResponse(content={"error":"User not found"},status_code=404)
     otp_entries = await db.otps.find({"email": data.email}).to_list(None)
     if otp_entries:
         await db.otps.delete_many({"email": data.email})
@@ -92,8 +94,8 @@ async def send_otp(data: forgetPassword, db=Depends(get_db)):
     
     fm = FastMail(conf)
     await fm.send_message(message)
+    return JSONResponse(content={"message": "OTP sent successfully"}, status_code=200)
     
-    return {"message": "OTP sent successfully"}
 
 
 
@@ -104,17 +106,15 @@ async def reset_password(data: updatePassword, db=Depends(get_db)):
     otp_entry = otp_entry[0] if otp_entry else None
 
     if not otp_entry:
-        raise HTTPException(status_code=404, detail="Invalid or expired OTP.")
-
-    print(f"Fetched OTP entry: {otp_entry}")
+        return JSONResponse(content={"error": "Invalid or expired OTP."}, status_code=400)
 
     expires_at = otp_entry["expires_at"].replace(tzinfo=timezone.utc)
 
     if expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="OTP expired. Request a new one.")
+        return JSONResponse(content={"error": "OTP expired. Request a new one."}, status_code=400)
 
     if otp_entry["otp"] != data.otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP.")
+        return JSONResponse(content={"error": "Invalid OTP."}, status_code=400)
 
     hashed_password = bcrypt.hashpw(data.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -122,4 +122,5 @@ async def reset_password(data: updatePassword, db=Depends(get_db)):
 
     await db.otps.delete_many({"email": data.email})
 
-    return {"message": "Password reset successfully."}
+    return JSONResponse(content={"message": "Password reset successfully."}, status_code=200)
+

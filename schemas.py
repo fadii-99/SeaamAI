@@ -4,7 +4,7 @@ class UserSignup(BaseModel):
     name: str = Field(None, example="John Doe")
     email: EmailStr = Field(None, example="johndoe@example.com")
     password: str = Field(None, example="password123")
-    avatar: str = Field(None, example="https://example.com/avatar.jpg")
+    # avatar: str = Field(None, example="https://example.com/avatar.jpg")
 
 class UserLogin(BaseModel):
     email: str
