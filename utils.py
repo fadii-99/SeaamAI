@@ -17,10 +17,10 @@ from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from dotenv import load_dotenv
 import os
-# from chat_bot import get_answer_chat
+
 load_dotenv()
 
-# Load OpenAI API key
+
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 def add_to_vector(user_id, chat_id):
@@ -28,19 +28,14 @@ def add_to_vector(user_id, chat_id):
     path1 = f'vector_db/{user_id}/{chat_id}'
     vector_store = Chroma(
     embedding_function=OpenAIEmbeddings(),
-    persist_directory=path1,  # Where to save data locally, remove if not necessary
+    persist_directory=path1, 
     )
 
-# Specify the directory path containing the PDF files
     
 
-    # Create a DirectoryLoader and set PDFPlumberLoader as the loader class
     loader = DirectoryLoader(path, glob="**/*.pdf", loader_cls=PDFPlumberLoader)
 
-    # Load all PDF documents in the directory
     docs = loader.load()
-    # Print the first 100 characters of the first document
-    # Import necessary modules'
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=100)
     splits = text_splitter.split_documents(docs)
@@ -53,20 +48,16 @@ def add_to_vector(user_id, chat_id):
 
 class seemAiChatHandler:
     def __init__(self, user_id, chat_id):
-        """Initialize the TenderChatHandler with necessary variables."""
         path1 = f'vector_db/{user_id}/{chat_id}'
         self.user_id = user_id
         self.chat_id = chat_id
-        # Vector Store (initially empty, updated when created)
         self.vector_store = Chroma(
             embedding_function=OpenAIEmbeddings(),
             persist_directory=path1
         )
 
-        # Language Model (LLM)
         self.llm = ChatOpenAI(model="gpt-4o-mini")
 
-        # Session History Store
         self.history_store = {}
 
         # Prompts
@@ -78,13 +69,11 @@ class seemAiChatHandler:
             "and if certain details are not available, clearly state that the information cannot be found."
         )
 
-        # QA Chain Prompt Template (including 'context' as a variable)
         self.qa_prompt = ChatPromptTemplate.from_messages([
             ("system", "{context}"),  # Inject the context here
             ("human", "{input}")
         ])
 
-        # Contextualization Prompt Template
         self.contextualize_q_system_prompt = (
             "Given a chat history and the latest user question which might reference context in the chat history, "
             "formulate a standalone question which can be understood without the chat history. "
@@ -120,13 +109,11 @@ class seemAiChatHandler:
         )
 
     def get_session_history(self, session_id: str) -> ChatMessageHistory:
-        """Retrieve or create a session history."""
         if session_id not in self.history_store:
             self.history_store[session_id] = ChatMessageHistory()
         return self.history_store[session_id]
 
     def get_answer(self, query):
-        """Handle the chat interaction and return the answer."""
         num_documents = len(self.vector_store.get()["ids"])
         print(f"Total number of documents: {num_documents}")
 

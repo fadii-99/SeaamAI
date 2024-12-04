@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import get_db
 from fastapi.responses import JSONResponse
-
-from schemas import UserSignup, UserLogin, forgetPassword, updatePassword
+from jwt import ExpiredSignatureError, InvalidTokenError
+from schemas import UserSignup, UserLogin, forgetPassword, updatePassword, tokenValidation
 from bson.objectid import ObjectId
 import bcrypt
 import jwt
@@ -13,6 +13,19 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+@router.post("/validate-token")
+async def login(data: tokenValidation):
+    try:
+        payload = jwt.decode(data.token, settings.SECRET_KEY, algorithms=["HS256"])
+
+        return JSONResponse(content={"message": "Token is valid", "userData": payload}, status_code=200)
+    except ExpiredSignatureError:
+        return JSONResponse(content={"error": "Token expired"}, status_code=401)
+    except InvalidTokenError:
+        return JSONResponse(content={"error": "Invalid token"}, status_code=401)
+
+
 
 @router.post("/signup")
 async def signup(user: UserSignup, db=Depends(get_db)):
@@ -25,7 +38,7 @@ async def signup(user: UserSignup, db=Depends(get_db)):
         "name": user.name,
         "email": user.email,
         "password": hashed_password.decode('utf-8'),
-        "avatar": None
+        "avatar": 'default_user_avatar.jpg'
     }
     await db.users.insert_one(user_data)
     return JSONResponse(content={"message": "User registered successfully"}, status_code=200)
@@ -45,7 +58,7 @@ async def login(user: UserLogin, db=Depends(get_db)):
         "name": str(existing_user["name"]),
         "email": str(existing_user["email"]),
         "avatar": str(existing_user["avatar"]),
-        "exp": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+        "exp": int((datetime.now(timezone.utc) + timedelta(days=1)).timestamp())
     }, settings.SECRET_KEY, algorithm="HS256")
 
     return JSONResponse(content={"message": "User Logged in successfully","token": token}, status_code=200)

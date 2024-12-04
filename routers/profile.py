@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Form, UploadFile
+from fastapi.responses import FileResponse,JSONResponse
 from database import get_db
 from schemas import UserSignup, UserLogin
 from bson.objectid import ObjectId
@@ -7,10 +8,11 @@ import jwt
 from datetime import datetime, timedelta
 from config import settings
 import os
+from datetime import datetime, timedelta, timezone
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
-AVATAR_DIR = "Avatar/"  # Directory where avatar files are stored
+AVATAR_DIR = "Avatar/"  
 
 
 async def get_current_user(token: str = Depends(...)):
@@ -18,46 +20,68 @@ async def get_current_user(token: str = Depends(...)):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         return payload.get("user_id")
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
+        return JSONResponse(content={"error": "Token expired"}, status_code=401)
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        return JSONResponse(content={"error": "Invalid token"}, status_code=401)
 
 
-@router.put("/profile/update")
+
+@router.post("/update")
 async def update_profile(
-    user_data: UserSignup, 
+    user_id: str = Form(), 
+    name: str = Form(None),  
+    email: str = Form(None),  
+    avatar: UploadFile = Form(None),  
     db=Depends(get_db),
-    user_id: str = Depends(get_current_user), 
 ):
-    
+    # Debugging information
+    print('Updating profile for user:', user_id)
+
     existing_user = await db.users.find_one({"_id": ObjectId(user_id)})
     if not existing_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        return JSONResponse(content={"error": "User not found"}, status_code=404)
 
     update_data = {}
-    if user_data.name:
-        update_data["name"] = user_data.name
-    if user_data.email and user_data.email != existing_user["email"]:
-        email_exists = await db.users.find_one({"email": user_data.email})
-        if email_exists:
-            raise HTTPException(status_code=400, detail="Email already in use")
-        update_data["email"] = user_data.email
-    if user_data.password:
-        update_data["password"] = bcrypt.hashpw(user_data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    if user_data.avatar:
-        old_avatar_path = os.path.join(AVATAR_DIR, existing_user.get("avatar", ""))
-        if os.path.exists(old_avatar_path) and existing_user.get("avatar"):
-            os.remove(old_avatar_path)
+    if name:
+        update_data["name"] = name
+    if email:
+        update_data["email"] = email
+    if avatar:
+        old_avatar_path = existing_user.get("avatar", "")
+        if old_avatar_path:
+            old_avatar_full_path = os.path.join(AVATAR_DIR, old_avatar_path)
+            if os.path.exists(old_avatar_full_path):
+                os.remove(old_avatar_full_path)
 
-        # Save new avatar
-        new_avatar_filename = f"{user_id}_{user_data.avatar.filename}"
+        new_avatar_filename = f"{user_id}_{avatar.filename}"
         new_avatar_path = os.path.join(AVATAR_DIR, new_avatar_filename)
         with open(new_avatar_path, "wb") as f:
-            f.write(await user_data.avatar.read())  # Read and save the uploaded file
+            f.write(await avatar.read())
 
-        update_data["avatar"] = new_avatar_filename
-        update_data["avatar"] = user_data.avatar
+        update_data["avatar"] = new_avatar_path
 
-    await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
+    if update_data:
+        await db.users.update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
 
-    return {"message": "Profile updated successfully"}
+
+    exist_user = await db.users.find_one({"_id": ObjectId(user_id)})
+    token = jwt.encode({
+        "user_id": str(exist_user["_id"]),
+        "name": str(exist_user["name"]),
+        "email": str(exist_user["email"]),
+        "avatar": str(exist_user["avatar"]),
+        "exp": int((datetime.now(timezone.utc) + timedelta(days=1)).timestamp())
+    }, settings.SECRET_KEY, algorithm="HS256")
+
+    return JSONResponse(content={"message": "Profile updated successfully", "token":token}, status_code=200)
+
+
+
+@router.post("/avatar")
+async def get_avatar(user_id: str= Form(), db=Depends(get_db)):
+    print(user_id)
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        return JSONResponse(content={"error": "Avatar not found"}, status_code=404)
+
+    return FileResponse(user["avatar"], media_type="image/jpeg")

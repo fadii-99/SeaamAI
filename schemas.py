@@ -15,6 +15,8 @@ class ChatSchema(BaseModel):
     question: str
     response: str
 
+class tokenValidation(BaseModel):
+    token: str
 class forgetPassword(BaseModel):
     email: EmailStr = Field(None, example="johndoe@example.com")
 
