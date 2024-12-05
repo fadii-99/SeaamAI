@@ -1,44 +1,14 @@
- # Step 2: Process files (if any)
-    # user_folder_path = os.path.join('Users', user_id)
-    # chat_folder_path = os.path.join(user_folder_path, chat_id)
-    # user_temp_path = os.path.join(chat_folder_path, "temp")
-
-    # os.makedirs(chat_folder_path, exist_ok=True)
-    # os.makedirs(user_temp_path, exist_ok=True)
-
-    # if files:
-    #     for file in files:
-    #         unique_filename = f"{user_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
-    #         file_path = os.path.join(user_temp_path, unique_filename)
-
-    #         # Save file temporarily
-    #         with open(file_path, "wb") as f:
-    #             content = await file.read()
-    #             f.write(content)
-
-    #         # Save document metadata
-    #         document_metadata = {
-    #             "file_path": file_path,
-    #             "filename": file.filename,
-    #             "upload_date": datetime.now(timezone.utc),
-    #         }
-    #         await db.chats.update_one(
-    #             {"_id": ObjectId(chat_id)},
-    #             {"$push": {"documents": document_metadata}},
-    #         )
-
-    #     # Add files to vector database
-    #     add_to_vector(user_id, chat_id)
-
-    #     # Move files to permanent folder
-    #     for file in os.listdir(user_temp_path):
-    #         shutil.move(os.path.join(user_temp_path, file), chat_folder_path)
-    #     shutil.rmtree(user_temp_path)
-
-    # Step 3: Process AI response
-
-
-
-
-
-
+fastapi==0.95.2
+uvicorn==0.22.0
+pydantic==1.10.8
+bson==0.5.10
+pymongo==4.6.0
+motor==3.2.0
+bcrypt==4.0.1
+pyjwt==2.8.0
+python-dotenv==1.0.0
+fastapi-mail==1.3.0
+langchain==0.0.208
+openai==0.28.1
+chromadb==0.3.25
+pdfplumber==0.9.0

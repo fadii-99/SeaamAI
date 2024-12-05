@@ -122,7 +122,7 @@ async def chat_with_upload(
             "user_id": user_id,
             "documents": [],
             "conversation": [],
-            "chat_name": message[:10] if message else "New Chat",
+            "chat_name": message[:20] if message else "New Chat",
             "timestamp": datetime.now(timezone.utc),  # Use datetime with timezone for consistency
         }
         chat_result = await db.chats.insert_one(chat_data)
@@ -194,7 +194,7 @@ async def list_chats(db=Depends(get_db), user_id: str = Form(...)):
     chat_list = [
         {
             "id": str(chat["_id"]),
-            "name": str(chat["_id"]),
+            "name": str(chat["chat_name"]),
         }
         for chat in await chats.to_list(length=100)
     ]
