@@ -132,6 +132,6 @@ class seemAiChatHandler:
             config={"session_id": self.user_id+self.chat_id}
         )["answer"]
 
-        return response
+        return response 
 
 # Example usage

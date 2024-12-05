@@ -1,0 +1,44 @@
+ # Step 2: Process files (if any)
+    # user_folder_path = os.path.join('Users', user_id)
+    # chat_folder_path = os.path.join(user_folder_path, chat_id)
+    # user_temp_path = os.path.join(chat_folder_path, "temp")
+
+    # os.makedirs(chat_folder_path, exist_ok=True)
+    # os.makedirs(user_temp_path, exist_ok=True)
+
+    # if files:
+    #     for file in files:
+    #         unique_filename = f"{user_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+    #         file_path = os.path.join(user_temp_path, unique_filename)
+
+    #         # Save file temporarily
+    #         with open(file_path, "wb") as f:
+    #             content = await file.read()
+    #             f.write(content)
+
+    #         # Save document metadata
+    #         document_metadata = {
+    #             "file_path": file_path,
+    #             "filename": file.filename,
+    #             "upload_date": datetime.now(timezone.utc),
+    #         }
+    #         await db.chats.update_one(
+    #             {"_id": ObjectId(chat_id)},
+    #             {"$push": {"documents": document_metadata}},
+    #         )
+
+    #     # Add files to vector database
+    #     add_to_vector(user_id, chat_id)
+
+    #     # Move files to permanent folder
+    #     for file in os.listdir(user_temp_path):
+    #         shutil.move(os.path.join(user_temp_path, file), chat_folder_path)
+    #     shutil.rmtree(user_temp_path)
+
+    # Step 3: Process AI response
+
+
+
+
+
+

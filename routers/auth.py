@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from config import  settings
 import random
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-
+import os
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -40,7 +40,12 @@ async def signup(user: UserSignup, db=Depends(get_db)):
         "password": hashed_password.decode('utf-8'),
         "avatar": 'default_user_avatar.jpg'
     }
-    await db.users.insert_one(user_data)
+    user_data = await db.users.insert_one(user_data)
+    user_id = str(user_data.inserted_id)
+    user_folder_path = os.path.join('Users', user_id)
+    os.makedirs(user_folder_path, exist_ok=True)
+    vector_db_folder_chat_path = os.path.join('vector_db', user_id)
+    os.makedirs(vector_db_folder_chat_path, exist_ok=True)
     return JSONResponse(content={"message": "User registered successfully"}, status_code=200)
 
 
