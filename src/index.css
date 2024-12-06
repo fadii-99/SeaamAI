@@ -1,0 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@100;200;300;400;500;600;700&display=swap');
+
+
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px; /* Width of the scrollbar */
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #e0e5ea; /* Thumb color */
+    border-radius: 4px; /* Rounded corners */
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background-color: #f0f5f9; /* Track color */
+}
