@@ -110,7 +110,6 @@ async def chat_with_upload(
     user_id: str = Form(...),
     chat_id: str = Form(...),
 ):
-    print(chat_id)
     # Step 1: Check if chat_id exists
     if chat_id != "null":
         existing_chat = await db.chats.find_one({"_id": ObjectId(chat_id), "user_id": user_id})
@@ -136,9 +135,7 @@ async def chat_with_upload(
     # Simulate AI response
     seemAI = seemAiChatHandler(user_id=user_id, chat_id=chat_id)
     ai_response = seemAI.get_answer(message)
-    print(ai_response)
 
-    print(seemAI.history_store)
 
     serialized_messages = []
     for key, history in seemAI.history_store.items():
@@ -175,9 +172,6 @@ async def chat_with_upload(
 @router.post("/get-chat")
 async def list_chats(db=Depends(get_db), user_id: str = Form(...), chat_id: str = Form(...)):
     existing_chat = await db.chats.find_one({"_id": ObjectId(chat_id), "user_id": user_id})
-    print(user_id)
-    print(chat_id)
-    print(existing_chat)
     
     return JSONResponse(
         content={
@@ -188,6 +182,41 @@ async def list_chats(db=Depends(get_db), user_id: str = Form(...), chat_id: str 
         },
         status_code=200,
     )
+
+@router.post("/delete")
+async def delete_chat(
+    db=Depends(get_db),
+    user_id: str = Form(...),
+    chat_id: str = Form(...),
+):
+    try:
+        user_folder_path = os.path.join('Users', user_id)
+        chat_folder_path = os.path.join(user_folder_path, chat_id)
+
+        if os.path.exists(chat_folder_path):
+            for file_name in os.listdir(chat_folder_path):
+                file_path = os.path.join(chat_folder_path, file_name)
+                os.remove(file_path)  # Delete each file
+            os.rmdir(chat_folder_path)  # Remove the now-empty folder
+
+        return JSONResponse(
+            content={
+                "message": "Chat and associated files deleted successfully",
+            },
+            status_code=200,
+        )
+
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "message": "An error occurred while deleting the chat",
+                "error": str(e),
+            },
+            status_code=500,
+        )
+    
+
+
 @router.post("/list")
 async def list_chats(db=Depends(get_db), user_id: str = Form(...)):
     chats = db.chats.find({"user_id": user_id})

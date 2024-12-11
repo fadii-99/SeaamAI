@@ -17,7 +17,6 @@ os.makedirs(DOCUMENTS_DIR, exist_ok=True)
 @router.post("/upload")
 async def upload_documents(files: list[UploadFile], db=Depends(get_db), user_id: str = Form(...), chat_id: str = Form(...)):
      # Step 1: Check if chat_id exists
-    print("checking uplaod ",chat_id)
     if chat_id == "null":
         chat_data = {
             "user_id": user_id,

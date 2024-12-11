@@ -38,7 +38,7 @@ async def signup(user: UserSignup, db=Depends(get_db)):
         "name": user.name,
         "email": user.email,
         "password": hashed_password.decode('utf-8'),
-        "avatar": 'default_user_avatar.jpg'
+        "avatar": 'Avatar/User_Avatar.jpg'
     }
     user_data = await db.users.insert_one(user_data)
     user_id = str(user_data.inserted_id)
