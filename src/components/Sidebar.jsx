@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHistory, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { faHistory, faSignOutAlt , faDownload , faTrash } from '@fortawesome/free-solid-svg-icons';
 import Loader from './../components/Loader';
 import avatar from './../assets/avatar.jpeg';
 import { useTokenValidation } from './Auth';
@@ -216,6 +216,75 @@ function Sidebar() {
 
 
 
+    const handleDownload = async (chatId) => {
+        try {
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('user_id', localStorage.getItem('userId'));
+    
+            const response = await fetch(`${API_URL}/chat/get-chat`, {
+                method: 'POST',
+                body: formData,
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to fetch chat data');
+            }
+    
+            const data = await response.json();
+    
+            // Format conversation as Markdown
+            const markdownContent = data.complete_chat.conversation
+                .map((msg) =>
+                    msg.role === 'user'
+                        ? `**User:** ${msg.content}\n`
+                        : `**Bot:** ${msg.content}\n`
+                )
+                .join('\n');
+    
+            // Create a blob and trigger the download
+            const blob = new Blob([markdownContent], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+    
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chat-${chatId}.md`;
+            a.click();
+    
+            // Clean up
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading chat conversation:', error);
+        }
+    };
+
+    
+
+    const handleDeleteChat = async (chatId) => {
+        try {
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('user_id', localStorage.getItem('userId'));
+    
+            const response = await fetch(`${API_URL}/chat/delete`, {
+                method: 'POST',
+                body: formData,
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to delete chat');
+            }
+    
+            // Update the chatData state to remove the deleted chat
+            setChatData((prevChatData) => prevChatData.filter((chat) => chat.id !== chatId));
+        } catch (error) {
+            console.error('Error deleting chat:', error);
+        }
+    };
+
+    
+
+
     return (
         <div
             className={`fixed top-0 left-0 h-screen flex flex-col items-start justify-between pb-6 gap-4 transition-all 
@@ -246,7 +315,7 @@ function Sidebar() {
                     <h1 className="text-gray-950 font-semibold text-lg flex items-center px-5 pb-2 text-nowrap">
                         Chat History
                     </h1>
-                    <div className="px-5 overflow-y-auto custom-scrollbar border-gray-200 border-t border-b py-4">
+                    <div className="px-5 h-[60vh] overflow-y-auto custom-scrollbar border-gray-200 border-t border-b py-4">
                         <div className="flex-1">
                             {isLoading ? (
                                 <p className="text-gray-500 text-center text-sm text-nowrap">Loading chat history...</p>
@@ -255,9 +324,28 @@ function Sidebar() {
                                     <div
                                         key={chat.id}
                                         onClick={() => handleCardClick(chat.id)}
-                                        className="bg-white bg-opacity-70 mt-2 border border-gray-300 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition"
+                                        className="bg-white bg-opacity-70 mt-2 border border-gray-300 rounded-lg 
+                                        p-4 cursor-pointer hover:bg-gray-100 transition flex flex-row items-center justify-between"
                                     >
                                         <h2 className="text-gray-900 font-medium text-sm text-nowrap">{chat.name}</h2>
+                                        <div className='flex flex-row items-center gap-2'>
+                                            <FontAwesomeIcon 
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent triggering the chat click handler
+                                                handleDownload(chat.id);
+                                            }}
+                                            icon={faDownload} 
+                                            className="text-gray-600 text-xs" />
+                                                <FontAwesomeIcon
+                                                    icon={faTrash}
+                                                    className="text-red-600 text-xs cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent triggering the chat card click handler
+                                                        handleDeleteChat(chat.id);
+                                                    }}
+                                                />
+                                        </div>
+                                        
                                     </div>
                                 ))
                             ) : (

@@ -24,7 +24,47 @@ function Chatbot() {
 
     const userAvatarUrl = "https://ui-avatars.com/api/?name=User&background=random&size=128";
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener("click", handleClickOutside);
 
+        return () => {
+            document.removeEventListener("click", handleClickOutside);
+        };
+    }, []);
+
+
+    
+    
+    const handleDeleteDocument = async (docName) => {
+        try {
+            const formData = new FormData();
+            formData.append("user_id", localStorage.getItem("userId"));
+            formData.append("chat_id", localStorage.getItem("chatId"));
+            formData.append("document", docName);
+    
+            const response = await fetch(`${API_URL}/documents/delete`, {
+                method: "POST",
+                body: formData,
+            });
+    
+            if (!response.ok) {
+                throw new Error("Failed to delete document");
+            }
+    
+            setDocuments((prevDocuments) =>
+                prevDocuments.filter((doc) => doc !== docName)
+            );
+    
+        } catch (error) {
+            console.error("Error deleting document:", error);
+        }
+    };
+    
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
@@ -34,12 +74,15 @@ function Chatbot() {
         setMessages(conversation); // Sync messages with context whenever conversation updates
     }, [conversation]);
 
+  
+
     useEffect(() => {
-        const userId = localStorage.getItem("userId");
-        if (userId) {
-            fetchChatData(userId);
-        }
+            const userId = localStorage.getItem("userId");
+            if (userId) {
+                fetchChatData(userId);
+            }
     }, []);
+    
 
 
     useEffect(() => {
@@ -291,7 +334,11 @@ function Chatbot() {
                                             >
                                                 {displayDoc}
                                             </li>
-                                             <FontAwesomeIcon icon={faTrash} className="text-xs opacity-60 text-red-700" />
+                                            <FontAwesomeIcon
+                                                icon={faTrash}
+                                                className="text-xs opacity-60 text-red-700 cursor-pointer"
+                                                onClick={() => handleDeleteDocument(doc)} // Call delete function
+                                            />
                                             </div>
                                            
                                         );

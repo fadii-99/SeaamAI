@@ -20,6 +20,7 @@ function Login() {
     password: false,
   });
   const validateTokenAndFetchData = useTokenValidation();
+  const [avatarUrl, setAvatarUrl] = useState(null);
 
   const [errorMessage, setErrorMessage] = useState('');
 

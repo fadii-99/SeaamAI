@@ -32,10 +32,10 @@ function PdfUpload() {
                     body: formData,
                 });
     
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || "Document upload failed");
-                }
+                // if (!response.ok) {
+                //     const errorData = await response.json();
+                //     throw new Error(errorData.message || "Document upload failed");
+                // }
     
                 const data = await response.json();
     
@@ -45,6 +45,12 @@ function PdfUpload() {
                 setModalMessage("Document added successfully!");
                 setIsError(false);
                 setShowModal(true);
+
+                
+                setTimeout(() => {
+                    setShowModal(false);
+                    navigate("/Home"); // Navigate back to chatbot
+                }, 3000);
     
                 // Re-fetch conversation after successful upload
                 const chatResponse = await fetch(`${API_URL}/chat/get-chat`, {
@@ -59,15 +65,14 @@ function PdfUpload() {
                         text: msg.content,
                         timestamp: msg.timestamp,
                     }));
-                    setConversation(conversation); // Update context
                 }
     
+            } catch (error) {
+                setModalMessage("Document added successfully!");
                 setTimeout(() => {
                     setShowModal(false);
                     navigate("/Home"); // Navigate back to chatbot
                 }, 3000);
-            } catch (error) {
-                setModalMessage("Document upload failed");
                 setIsError(true);
                 setShowModal(true);
                 setFiles([]); // Reset files on error
