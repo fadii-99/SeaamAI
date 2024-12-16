@@ -23,9 +23,9 @@ load_dotenv()
 
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
-def add_to_vector(user_id, chat_id):
-    path = f'Users/{user_id}/{chat_id}/temp'
-    path1 = f'vector_db/{user_id}/{chat_id}'
+def add_to_vector(user_id):
+    path = f'Users/{user_id}/temp'
+    path1 = f'vector_db/{user_id}'
     vector_store = Chroma(
     embedding_function=OpenAIEmbeddings(),
     persist_directory=path1, 
@@ -47,10 +47,9 @@ def add_to_vector(user_id, chat_id):
 
 
 class seemAiChatHandler:
-    def __init__(self, user_id, chat_id):
-        path1 = f'vector_db/{user_id}/{chat_id}'
+    def __init__(self, user_id):
+        path1 = f'vector_db/{user_id}'
         self.user_id = user_id
-        self.chat_id = chat_id
         self.vector_store = Chroma(
             embedding_function=OpenAIEmbeddings(),
             persist_directory=path1
@@ -108,6 +107,27 @@ class seemAiChatHandler:
             self.history_aware_retriever, self.question_answer_chain
         )
 
+        # Topic Generation Prompt
+        self.prompt_topic_generation = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """
+                        Your task is to generate a concise and relevant title for the provided text in exactly 5-8 words. 
+                        The title should focus on the main idea of the text.                 
+                        The topic should strictly adhere to the word count of 5-8 words.
+                    """
+                ),
+                ("human", "{text}"),
+            ]
+        )
+
+        self.llm1 = ChatOpenAI(model="gpt-4o-mini", temperature=0.01)
+        self.runnable_summary = self.prompt_topic_generation | self.llm1
+
+    def get_summary(self, text):
+        return self.runnable_summary.invoke({"text": text}).content
+
     def get_session_history(self, session_id: str) -> ChatMessageHistory:
         if session_id not in self.history_store:
             self.history_store[session_id] = ChatMessageHistory()
@@ -129,9 +149,9 @@ class seemAiChatHandler:
         # Invoke the chain with the user query and session ID
         response = conversational_rag_chain.invoke(
             {"input": query},
-            config={"session_id": self.user_id+self.chat_id}
+            config={"session_id": self.user_id}
         )["answer"]
 
-        return response 
+        return response
 
-# Example usage
+

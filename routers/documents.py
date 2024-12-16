@@ -15,24 +15,13 @@ DOCUMENTS_DIR = "documents"
 os.makedirs(DOCUMENTS_DIR, exist_ok=True)  
 
 @router.post("/upload")
-async def upload_documents(files: list[UploadFile], db=Depends(get_db), user_id: str = Form(...), chat_id: str = Form(...)):
-     # Step 1: Check if chat_id exists
-    if chat_id == "null":
-        chat_data = {
-            "user_id": user_id,
-            "documents": [],
-            "conversation": [],
-            "chat_name": "New Chat",
-            "timestamp": datetime.now(timezone.utc),  # Use datetime with timezone for consistency
-        }
-        chat_result = await db.chats.insert_one(chat_data)
-        chat_id = str(chat_result.inserted_id)
+async def upload_documents(files: list[UploadFile], db=Depends(get_db), user_id: str = Form(...)):
 
     user_folder_path = 'Users/' + user_id
     vector_db_folder_path = 'vector_db/' + user_id
     
-    chat_folder_path = os.path.join(user_folder_path, chat_id)
-    vector_db_folder_chat_path = os.path.join(vector_db_folder_path, chat_id)
+    chat_folder_path = user_folder_path
+    vector_db_folder_chat_path = vector_db_folder_path
     user_temp_path =os.path.join(chat_folder_path, 'temp') 
 
     os.makedirs(chat_folder_path, exist_ok=True)
@@ -52,53 +41,63 @@ async def upload_documents(files: list[UploadFile], db=Depends(get_db), user_id:
                 f.write(content)
 
             document_metadata = {
+                "user_id": user_id,
                 "file_path": file_path,
                 "filename": file.filename,
                 "upload_date": datetime.now(timezone.utc),
             }
-            await db.chats.update_one(
-                {"_id": ObjectId(chat_id)},
-                {"$push": {"documents": document_metadata}},
-            )
+            await db["documents"].insert_one(document_metadata)
 
-        add_to_vector(user_id, chat_id)
+        add_to_vector(user_id)
         shutil.move(file_path, chat_folder_path)
         shutil.rmtree(user_temp_path)
 
-    return JSONResponse(content={"message": "Files processed successfully", 'chatId':chat_id}, status_code=200)
+    return JSONResponse(content={"message": "Files processed successfully"}, status_code=200)
 
 
 @router.post("/list")
-async def list_documents(user_id: str = Form(), chat_id: str = Form(...)):
-    user_folder_path = 'Users/' + user_id
-    documents = ''
+async def list_documents(user_id: str = Form(), db=Depends(get_db)):
+    documents = await db.documents.find_one({"user_id": ObjectId(user_id)})
+        
+    if not documents:
+        return JSONResponse(content={"message": "No documents found for the specified user."}, status_code=404)
+    
+    documents_list = [
+            {
+                "id": str(document["_id"]),
+                "filename": document["filename"],
+                "file_path": document["file_path"],
+                "upload_date": document["upload_date"].isoformat() if "upload_date" in document else None
+            }
+            for document in await documents.to_list(length=100)
+        ]
 
-    chat_folder_path = os.path.join(user_folder_path, chat_id)
-    if chat_id != "null":
-        documents = os.listdir(chat_folder_path)  
-
-    return JSONResponse(content={'documents':documents}, status_code=200)
+    return JSONResponse(content={'documents':documents_list}, status_code=200)
 
 @router.post("/delete")
 async def delete_document(
+    db=Depends(get_db),
     user_id: str = Form(...), 
-    chat_id: str = Form(...), 
-    document: str = Form(...)
+    doc_id: str = Form(...), 
 ):
-    user_folder_path = os.path.join('Users', user_id)
-    chat_folder_path = os.path.join(user_folder_path, chat_id)
+    document = await db["documents"].find_one({"_id": ObjectId(doc_id), "user_id": user_id})
+        
+    if not document:
+        return JSONResponse(content={"error": "Document not found"}, status_code=404)
 
-    document_path = os.path.join(chat_folder_path, document)
+    file_path = document.get("file_path")
 
-    if os.path.exists(document_path):
-        try:
-            os.remove(document_path)
-            
-            documents = os.listdir(chat_folder_path)
-            return JSONResponse(content={'message': 'Document deleted successfully', 'documents': documents}, status_code=200)
-        except Exception as e:
-            return JSONResponse(content={'error': str(e)}, status_code=500)
+    if file_path and os.path.exists(file_path):
+        os.remove(file_path)
     else:
-        return JSONResponse(content={'error': 'Document not found'}, status_code=404)
+        return JSONResponse(
+            content={"error": f"File not found on the server: {file_path}"},
+            status_code=404,
+        )
+
+    await db["documents"].delete_one({"_id": ObjectId(doc_id), "user_id": user_id})
+
+    return JSONResponse(content={"message": "Document deleted successfully"}, status_code=200)
+    
 
     

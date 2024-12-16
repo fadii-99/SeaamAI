@@ -1,80 +1,3 @@
-# import os
-# from fastapi import APIRouter, Depends, UploadFile, HTTPException, Form
-# from database import get_db
-# from bson.objectid import ObjectId
-# from datetime import datetime, timezone
-# from fastapi.responses import JSONResponse
-
-
-# router = APIRouter(prefix="/chat", tags=["Chat"])
-
-# DOCUMENTS_DIR = "documents"
-# os.makedirs(DOCUMENTS_DIR, exist_ok=True)  
-
-# @router.post("/chat-upload")
-# async def chat_with_upload(
-#     chat_question: str = Form(None),  
-#     chat_response: str = Form(None),  
-#     files: list[UploadFile] = Form(None),  
-#     db=Depends(get_db),
-#     user_id: int = Form(...),  
-# ):
-#     chat_data = {
-#         "user_id": user_id,
-#         "documents": [], 
-#         "question": chat_question,
-#         "response": chat_response,
-#         "timestamp": datetime.now(timezone.utc),
-#     }
-#     chat_result = await db.chats.insert_one(chat_data)
-#     chat_id = str(chat_result.inserted_id)
-
-#     if files:
-#         for file in files:
-#             if not file.filename.endswith(".pdf"):
-#                 return JSONResponse(content={"error": "Only PDF files are allowed."}, status_code=400)
-            
-
-#             unique_filename = f"{user_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
-#             file_path = os.path.join(DOCUMENTS_DIR, unique_filename)
-
-#             with open(file_path, "wb") as f:
-#                 content = await file.read()
-#                 f.write(content)
-
-#             document_metadata = {
-#                 "file_path": file_path,
-#                 "filename": file.filename,
-#                 "upload_date": datetime.now(timezone.utc),
-#             }
-#             await db.chats.update_one(
-#                 {"_id": ObjectId(chat_id)},
-#                 {"$push": {"documents": document_metadata}},
-#             )
-
-#     return JSONResponse(content={
-#         "message": "Chat and files processed successfully",
-#         "chat_id": chat_id,
-#     }, status=200)
-
-
-# @router.get("/list-chats")
-# async def list_chats(db=Depends(get_db), user_id: int = Form(...)):
-#     chats = db.chats.find({"user_id": user_id})
-#     chat_list = [
-#         {
-#             "id": str(chat["_id"]),
-#             "question": chat["question"],
-#             "response": chat["response"],
-#             "documents": chat["documents"],  
-#             "timestamp": chat["timestamp"],
-#         }
-#         for chat in await chats.to_list(length=100)
-#     ]
-#     return JSONResponse(content={"message": "Chats retrieved successfully", "chats": chat_list}, status_code=200)
-
-
-
 
 import os
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Form
@@ -116,25 +39,22 @@ async def chat_with_upload(
         if not existing_chat:
             return JSONResponse(content={"error": "Chat ID not found"}, status_code=404)
     else:
-        # If no chat_id is provided, create a new chat
+        seemAI = seemAiChatHandler(user_id=user_id)
+        ai_response = seemAI.get_answer(message)
+        chat_title = seemAI.get_summary(ai_response)
         chat_data = {
             "user_id": user_id,
             "documents": [],
             "conversation": [],
-            "chat_name": message[:20] if message else "New Chat",
+            "chat_name": chat_title,
             "timestamp": datetime.now(timezone.utc),  # Use datetime with timezone for consistency
         }
         chat_result = await db.chats.insert_one(chat_data)
         chat_id = str(chat_result.inserted_id)
         
-        user_folder_path = os.path.join('Users', user_id)
-        chat_folder_path = os.path.join(user_folder_path, chat_id)
-
-        os.makedirs(chat_folder_path, exist_ok=True)
 
     # Simulate AI response
-    seemAI = seemAiChatHandler(user_id=user_id, chat_id=chat_id)
-    ai_response = seemAI.get_answer(message)
+    
 
 
     serialized_messages = []
@@ -186,18 +106,11 @@ async def list_chats(db=Depends(get_db), user_id: str = Form(...), chat_id: str 
 @router.post("/delete")
 async def delete_chat(
     db=Depends(get_db),
-    user_id: str = Form(...),
     chat_id: str = Form(...),
 ):
     try:
-        user_folder_path = os.path.join('Users', user_id)
-        chat_folder_path = os.path.join(user_folder_path, chat_id)
+        await db["chats"].delete_one({"_id": ObjectId(chat_id)})
 
-        if os.path.exists(chat_folder_path):
-            for file_name in os.listdir(chat_folder_path):
-                file_path = os.path.join(chat_folder_path, file_name)
-                os.remove(file_path)  # Delete each file
-            os.rmdir(chat_folder_path)  # Remove the now-empty folder
 
         return JSONResponse(
             content={
