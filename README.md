@@ -1,4 +1,4 @@
-# SeaamAI — Conversational RAG Chatbot API
+# SeaamAI — Conversational RAG Chatbot
 
 A production-ready AI chatbot backend that lets users upload PDF documents and have intelligent, context-aware conversations about them. Built with **LangChain**, **OpenAI GPT-4o-mini**, **ChromaDB**, and **FastAPI**, the system implements a full Retrieval-Augmented Generation (RAG) pipeline with persistent chat history and per-user isolated vector stores.
 
